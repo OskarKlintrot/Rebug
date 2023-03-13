@@ -7,9 +7,8 @@ param appName string
 @description('Specifies sql admin login')
 param sqlAdministratorLogin string
 
-@description('Specifies sql admin password')
-@secure()
-param sqlAdministratorPassword string
+@description('Specifies sql admin SID (object ID)')
+param sqlAdministratorSid string
 
 var databaseName = 'rebugdb'
 
@@ -18,9 +17,9 @@ module db 'db.bicep' = {
   name: '${appName}-db-${uniqueString(resourceGroup().name)}'
   params: {
     location: location
-    sqlAdministratorLogin: sqlAdministratorLogin
-    sqlAdministratorPassword: sqlAdministratorPassword
     databaseName: databaseName
+    sqlAdministratorLogin: sqlAdministratorLogin
+    sqlAdministratorSid: sqlAdministratorSid
   }
 }
 

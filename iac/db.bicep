@@ -7,18 +7,22 @@ param databaseName string = 'rebugdb'
 @description('Specifies sql admin login')
 param sqlAdministratorLogin string
 
-@description('Specifies sql admin password')
-@secure()
-param sqlAdministratorPassword string
+@description('Specifies sql admin SID (object ID)')
+param sqlAdministratorSid string
 
 // Data resources
 resource sqlserver 'Microsoft.Sql/servers@2021-11-01' = {
   name: 'sqlserver${uniqueString(resourceGroup().id)}'
   location: location
   properties: {
-    administratorLogin: sqlAdministratorLogin
-    administratorLoginPassword: sqlAdministratorPassword
     version: '12.0'
+    administrators: {
+      azureADOnlyAuthentication: true
+      administratorType: 'ActiveDirectory'
+      login: sqlAdministratorLogin
+      sid: sqlAdministratorSid
+      tenantId: subscription().tenantId
+    }
   }
 
   resource database 'databases@2021-11-01' = {
