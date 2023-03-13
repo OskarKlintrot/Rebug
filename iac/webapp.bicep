@@ -34,7 +34,7 @@ resource webSite 'Microsoft.Web/sites@2022-03-01' = {
       netFrameworkVersion: 'v7.0'
       windowsFxVersion: 'DOTNET|7.0'
       use32BitWorkerProcess: false
-      // https://github.com/Azure/bicep-types-az/issues/1393
+      #disable-next-line BCP037 // https://github.com/Azure/bicep-types-az/issues/1393
       metadata :[
         {
           name:'CURRENT_STACK'
