@@ -7,7 +7,19 @@ param webSiteName string
 @description('Web site id')
 param webSiteId string
 
+param logAnalyticsWorkspace string = '${uniqueString(resourceGroup().id)}la'
+
 // Monitor
+resource logAnalytics 'Microsoft.OperationalInsights/workspaces@2022-10-01' = {
+  name: logAnalyticsWorkspace
+  location: location
+  properties: {
+    sku: {
+      name: 'PerGB2018'
+    }
+  }
+}
+
 resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   name: 'AppInsights${webSiteName}'
   location: location
@@ -17,6 +29,7 @@ resource appInsights 'Microsoft.Insights/components@2020-02-02' = {
   }
   kind: 'web'
   properties: {
+    WorkspaceResourceId: logAnalytics.id
     Application_Type: 'web'
   }
 }

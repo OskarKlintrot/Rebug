@@ -1,3 +1,5 @@
+targetScope = 'resourceGroup'
+
 @description('Specifies region for all resources')
 param location string = resourceGroup().location
 
