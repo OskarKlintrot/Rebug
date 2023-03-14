@@ -37,7 +37,10 @@ module conf 'webapp.config.bicep' = {
   dependsOn: [ webapp, appInsights ]
   params: {
     appName: appName
-    appInsightsId: appInsights.outputs.appId
+    appInsights: {
+      instrumentationKey: appInsights.outputs.instrumentationKey
+      connectionString: appInsights.outputs.connectionString
+    }
     databaseName: db.outputs.databaseName
     databaseServer: db.outputs.fullyQualifiedDomainName
   }

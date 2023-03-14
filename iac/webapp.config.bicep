@@ -1,8 +1,10 @@
 @description('Application name - used as prefix for resource names')
 param appName string
 
-@description('APPINSIGHTS_INSTRUMENTATIONKEY')
-param appInsightsId string
+param appInsights {
+  instrumentationKey: string
+  connectionString: string
+}
 
 @description('Database server to use')
 param databaseServer string
@@ -17,7 +19,11 @@ resource webSiteConfig 'Microsoft.Web/sites/config@2022-03-01' = {
     appSettings: [
       {
         name: 'APPINSIGHTS_INSTRUMENTATIONKEY'
-        value: appInsightsId
+        value: appInsights.instrumentationKey
+      }
+      {
+        name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+        value: appInsights.connectionString
       }
     ]
   }
