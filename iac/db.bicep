@@ -4,11 +4,10 @@ param location string = resourceGroup().location
 @description('Name of database - default is rebugdb')
 param databaseName string = 'rebugdb'
 
-@description('Specifies sql admin login')
-param sqlAdministratorLogin string
+@description('External user to add access to the database. Usually the app name.')
+param user string
 
-@description('Specifies sql admin SID (object ID)')
-param sqlAdministratorSid string
+param managedIdentityResoureName string
 
 // Data resources
 resource sqlserver 'Microsoft.Sql/servers@2021-11-01' = {
@@ -19,8 +18,8 @@ resource sqlserver 'Microsoft.Sql/servers@2021-11-01' = {
     administrators: {
       azureADOnlyAuthentication: true
       administratorType: 'ActiveDirectory'
-      login: sqlAdministratorLogin
-      sid: sqlAdministratorSid
+      login: managedIdentity.name
+      sid: managedIdentity.properties.clientId
       tenantId: subscription().tenantId
     }
   }
@@ -47,6 +46,59 @@ resource sqlserver 'Microsoft.Sql/servers@2021-11-01' = {
       startIpAddress: '0.0.0.0'
     }
   }
+}
+
+// Rights
+resource runPowerShellInline 'Microsoft.Resources/deploymentScripts@2020-10-01' = {
+  name: 'runPowerShellInline'
+  location: location
+  kind: 'AzurePowerShell'
+  identity: {
+    type: 'UserAssigned'
+    userAssignedIdentities: {
+      '${managedIdentity.id}': {}
+    }
+  }
+  properties: {
+    azPowerShellVersion: '8.3'
+    scriptContent: '''
+      param([string] $sqlServer, [string] $database, [string] $user)
+      
+      Set-PSRepository PSGallery `
+                       -SourceLocation https://www.powershellgallery.com/api/v2 `
+                       -PackageManagementProvider NuGet `
+                       -InstallationPolicy Trusted
+
+      Install-Module -Name SqlServer -RequiredVersion 21.1.18256
+
+#disable-next-line no-hardcoded-env-urls
+      $credentials = Get-AzAccessToken -ResourceUrl https://database.windows.net
+      $token = $credentials.Token
+
+      $queries = @(
+          "CREATE USER [${user}] FROM EXTERNAL PROVIDER"
+          "EXEC sp_addrolemember N'db_datawriter', [${user}]"
+          "EXEC sp_addrolemember N'db_datareader', [${user}]"
+      )
+
+      foreach ( $query in $queries )
+      {
+          Invoke-SqlCmd -ServerInstance $sqlServer `
+                        -Database $database `
+                        -AccessToken $token `
+                        -Query $query
+      }
+    '''
+    arguments: '-sqlServer ${sqlserver.properties.fullyQualifiedDomainName} -database ${sqlserver::database.name} -user ${user}'
+    timeout: 'PT10M'
+    cleanupPreference: 'OnSuccess'
+    retentionInterval: 'PT1H'
+  }
+}
+
+// Managed Identity resources
+resource managedIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+  name: managedIdentityResoureName
 }
 
 output databaseName string = sqlserver::database.name

@@ -6,22 +6,17 @@ param location string = resourceGroup().location
 @description('Application name - used as prefix for resource names')
 param appName string
 
-@description('Specifies sql admin login')
-param sqlAdministratorLogin string
-
-@description('Specifies sql admin SID (object ID)')
-param sqlAdministratorSid string
-
 var databaseName = 'rebugdb'
 
 // Data resources
 module db 'db.bicep' = {
   name: '${appName}-db-${uniqueString(resourceGroup().name)}'
+  dependsOn: [ webapp, identity ]
   params: {
     location: location
     databaseName: databaseName
-    sqlAdministratorLogin: sqlAdministratorLogin
-    sqlAdministratorSid: sqlAdministratorSid
+    user: appName
+    managedIdentityResoureName: identity.outputs.managedIdentityResoureName
   }
 }
 
@@ -48,20 +43,6 @@ module conf 'webapp.config.bicep' = {
   }
 }
 
-// // Managed Identity resources
-// resource msi 'Microsoft.ManagedIdentity/identities@2023-01-31' existing = {
-//   name: 'default'
-// }
-
-// resource roleassignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-//   name: guid(msi.id, resourceGroup().id, 'b24988ac-6180-42a0-ab88-20f7382dd24c')
-//   properties: {
-//     principalType: 'ServicePrincipal'
-//     roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions', 'b24988ac-6180-42a0-ab88-20f7382dd24c')
-//     principalId: msi.properties.principalId
-//   }
-// }
-
 // Monitor
 module appInsights 'ai.bicep' = {
   name: '${appName}-ai-${uniqueString(resourceGroup().name)}'
@@ -69,5 +50,18 @@ module appInsights 'ai.bicep' = {
     location: location
     webSiteId: webapp.outputs.id
     webSiteName: webapp.outputs.name
+  }
+}
+
+// Managed identity
+module identity 'managed-identity.bicep' = {
+  name: 'ra-sqlserver${uniqueString(resourceGroup().id)}'
+  params: {
+    location: location
+    managedIdentityName: 'mi-sqlserver${uniqueString(resourceGroup().id)}'
+    roleDefinitionIds: [ '8e3af657-a8ff-443c-a75c-2fe8c4bcb635', '9b7fa17d-e63e-47b0-bb0a-15c516ac86ec', '6d8ee4ec-f05a-4a1d-8b00-a9b17e38b437' ]
+    roleAssignmentDescription: 'Owner, SQL Server Contributor, SQL DB Contributor'
+    // roleDefinitionIds: [ '9b7fa17d-e63e-47b0-bb0a-15c516ac86ec', '6d8ee4ec-f05a-4a1d-8b00-a9b17e38b437' ]
+    // roleAssignmentDescription: 'SQL Server Contributor, SQL DB Contributor'
   }
 }
