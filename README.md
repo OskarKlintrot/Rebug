@@ -6,16 +6,22 @@ https://github.com/dotnet/SqlClient/issues/1933
 > az login
 > az account set --subscription sandbox
 > az group create --name rg-rebug --location northeurope
-> az deployment group create -g rg-rebug --template-file .\main.bicep --confirm-with-what-if --parameters appName=Rebug sqlAdministratorLogin=<username> sqlAdministratorSid=<sid>
+> az deployment group create -g rg-rebug --template-file .\main.bicep --confirm-with-what-if --parameters appName=Rebug firstDeploy=true
 ```
 
-# Azure SQL
-Create user for App Service:
+## Create db users - alternative 1
+Assign the system identity of the SQL Server the Azure AD role `Directory Readers`:
+https://learn.microsoft.com/en-us/azure/active-directory/roles/manage-roles-portal#azure-portal
 
-```SQL
-CREATE USER [Rebug] FROM EXTERNAL PROVIDER
-EXEC sp_addrolemember N'db_datawriter', [Rebug]
-EXEC sp_addrolemember N'db_datareader', [Rebug]
+```powershell
+> az deployment group create -g rg-rebug --template-file .\main.bicep --confirm-with-what-if --parameters appName=Rebug
+```
+## Create db users - alternative 2
+Assign yourself as SQL Server Admin and execute these queries against the database:
+```sql
+CREATE USER [<appName>] FROM EXTERNAL PROVIDER
+EXEC sp_addrolemember N'db_datawriter', [<appName>]
+EXEC sp_addrolemember N'db_datareader', [<appName>]
 ```
 
 # Deploy web app
